@@ -1,0 +1,80 @@
+let allResults = [];
+let resultsPerPage = 10;
+
+$(document).ready(function () {
+
+  // SEARCH FUNCTION
+  $("#searchBtn").click(function () {
+    const query = $("#searchBox").val();
+
+    const url = `https://www.googleapis.com/books/v1/volumes?q=${query}&maxResults=40`;
+
+    $.get(url, function (data) {
+      allResults = data.items || [];
+      setupPagination();
+      displayResults(1);
+    });
+  });
+
+  // PAGINATION SETUP
+  function setupPagination() {
+    $("#pageSelect").empty();
+    const pages = Math.ceil(allResults.length / resultsPerPage);
+
+    for (let i = 1; i <= pages; i++) {
+      $("#pageSelect").append(`<option value="${i}">Page ${i}</option>`);
+    }
+  }
+
+  $("#pageSelect").change(function () {
+    displayResults($(this).val());
+  });
+
+  // DISPLAY RESULTS
+  function displayResults(page) {
+    $("#results").empty();
+
+    const start = (page - 1) * resultsPerPage;
+    const end = start + resultsPerPage;
+
+    const pageResults = allResults.slice(start, end);
+
+    pageResults.forEach(item => {
+      const book = item.volumeInfo;
+
+      $("#results").append(`
+        <div class="book">
+          <img src="${book.imageLinks?.thumbnail || ''}">
+          <h3>
+            <a href="details.html?id=${item.id}">
+              ${book.title}
+            </a>
+          </h3>
+        </div>
+      `);
+    });
+  }
+
+  // DETAILS PAGE LOGIC
+  const params = new URLSearchParams(window.location.search);
+  const bookID = params.get("id");
+
+  if (bookID) {
+    const url = `https://www.googleapis.com/books/v1/volumes/${bookID}`;
+
+    $.get(url, function (data) {
+      const book = data.volumeInfo;
+      const sale = data.saleInfo;
+
+      $("#bookDetails").html(`
+        <h1>${book.title}</h1>
+        <img src="${book.imageLinks?.thumbnail || ''}">
+        <p><strong>Authors:</strong> ${book.authors?.join(", ")}</p>
+        <p><strong>Publisher:</strong> ${book.publisher}</p>
+        <p><strong>Description:</strong> ${book.description}</p>
+        <p><strong>Price:</strong> ${sale?.listPrice ? sale.listPrice.amount + " " + sale.listPrice.currencyCode : "N/A"}</p>
+      `);
+    });
+  }
+
+});

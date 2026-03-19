@@ -1,0 +1,49 @@
+<html>
+<head>
+  <title>My Bookshelf</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+
+<body>
+
+<nav>
+  <h2>📚 Book App</h2>
+  <ul>
+    <li><a href="index.html">Home</a></li>
+    <li><a href="bookshelf.html">My Bookshelf</a></li>
+  </ul>
+</nav>
+
+<h1>My Bookshelf</h1>
+<div id="bookshelf"></div>
+
+<script>
+const bookIDs = [
+  "9780385732550, 0385732554",
+  "9780307245304, 0307245306",
+  "9781782119210, 1782119213"
+]; 
+
+$(document).ready(function() {
+  bookIDs.forEach(id => {
+    $.get(`https://www.googleapis.com/books/v1/volumes/${id}`, function(data) {
+      const book = data.volumeInfo;
+
+      $("#bookshelf").append(`
+        <div class="book">
+          <img src="${book.imageLinks?.thumbnail || ''}">
+          <h3>
+            <a href="details.html?id=${id}">
+              ${book.title}
+            </a>
+          </h3>
+        </div>
+      `);
+    });
+  });
+});
+</script>
+
+</body>
+</html>
