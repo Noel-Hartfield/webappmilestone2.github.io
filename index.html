@@ -1,227 +1,189 @@
-
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Book App</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<title>My Book Finder</title>
 
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
-  <style>
-    body {
-      font-family: Arial;
-      margin: 0;
-    }
-
-    nav {
-      display: flex;
-      justify-content: space-between;
-      background: #333;
-      color: white;
-      padding: 10px;
-    }
-
-    nav a {
-      color: white;
-      margin-left: 15px;
-      cursor: pointer;
-      text-decoration: none;
-    }
-
-    .page {
-      display: none;
-      padding: 20px;
-    }
-
-    .active {
-      display: block;
-    }
-
-    #results, #bookshelf {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 20px;
-    }
-
-    .book {
-      border: 1px solid #ccc;
-      padding: 10px;
-      text-align: center;
-    }
-
-    img {
-      width: 100px;
-    }
-  </style>
+<style>
+body{
+    font-family: Arial;
+    margin:0;
+    background:#f4f6f8;
+}
+nav{
+    background:#2c3e50;
+    padding:15px;
+}
+nav a{
+    color:white;
+    margin-right:20px;
+    text-decoration:none;
+    font-weight:bold;
+}
+.container{
+    padding:20px;
+}
+.bookCard{
+    display:inline-block;
+    width:200px;
+    background:white;
+    margin:10px;
+    padding:10px;
+    border-radius:8px;
+    box-shadow:0 0 5px #ccc;
+    text-align:center;
+}
+.bookCard img{
+    height:200px;
+}
+.hidden{display:none;}
+button{
+    padding:8px 15px;
+    background:#3498db;
+    color:white;
+    border:none;
+    border-radius:5px;
+}
+input{padding:8px;width:300px;}
+select{padding:6px;}
+</style>
 </head>
 
 <body>
 
-<!-- NAVIGATION -->
 <nav>
-  <h2>📚 Book App</h2>
-  <div>
-    <a id="navHome">Home</a>
-    <a id="navShelf">My Bookshelf</a>
-  </div>
+<a href="#" id="navHome">Home</a>
+<a href="#" id="navShelf">My Bookshelf</a>
 </nav>
 
-<!-- HOME (SEARCH PAGE) -->
-<div id="homePage" class="page active">
-  <h1>Search Books</h1>
+<div class="container">
 
-  <input type="text" id="searchBox" placeholder="Enter keywords">
-  <button id="searchBtn">Search</button>
-
-  <select id="pageSelect"></select>
-
-  <div id="results"></div>
+<!-- HOME SEARCH PAGE -->
+<div id="homePage">
+<h1>Book Search</h1>
+<input type="text" id="searchBox" placeholder="Search books...">
+<button id="searchBtn">Search</button>
+<br><br>
+Page:
+<select id="pageSelect"></select>
+<div id="results"></div>
 </div>
 
-<!-- DETAILS PAGE -->
-<div id="detailsPage" class="page">
-  <button id="backBtn">⬅ Back</button>
-  <div id="bookDetails"></div>
-</div>
+<!-- BOOK DETAILS PAGE -->
+<div id="detailsPage" class="hidden"></div>
 
 <!-- BOOKSHELF PAGE -->
-<div id="bookshelfPage" class="page">
-  <h1>My Bookshelf</h1>
-  <div id="bookshelf"></div>
+<div id="shelfPage" class="hidden">
+<h1>My Bookshelf</h1>
+<div id="bookshelfResults"></div>
+</div>
+
 </div>
 
 <script>
-let allResults = [];
-let resultsPerPage = 10;
 
-// NAVIGATION
-function showPage(pageId) {
-  $(".page").removeClass("active");
-  $("#" + pageId).addClass("active");
+let currentQuery="";
+let resultsPerPage=10;
+let allResults=[];
+
+/* NAVIGATION */
+$("#navHome").click(()=>showPage("home"));
+$("#navShelf").click(()=>{showPage("shelf");loadBookshelf();});
+
+function showPage(page){
+    $("#homePage,#detailsPage,#shelfPage").addClass("hidden");
+    if(page==="home") $("#homePage").removeClass("hidden");
+    if(page==="details") $("#detailsPage").removeClass("hidden");
+    if(page==="shelf") $("#shelfPage").removeClass("hidden");
 }
 
-$("#navHome").click(() => showPage("homePage"));
-$("#navShelf").click(() => {
-  showPage("bookshelfPage");
-  loadBookshelf();
-});
-
-$("#backBtn").click(() => showPage("homePage"));
-
-// SEARCH FUNCTION (up to 60 results)
-$("#searchBtn").click(function () {
-  const query = $("#searchBox").val();
-
-  if (!query) {
-    alert("Enter a search term");
-    return;
-  }
-
-  const url1 = `https://www.googleapis.com/books/v1/volumes?q=${query}&startIndex=0&maxResults=40`;
-  const url2 = `https://www.googleapis.com/books/v1/volumes?q=${query}&startIndex=40&maxResults=20`;
-
-  $.when($.get(url1), $.get(url2)).done(function (res1, res2) {
-    const results1 = res1[0].items || [];
-    const results2 = res2[0].items || [];
-
-    allResults = [...results1, ...results2];
-    setupPagination();
-    displayResults(1);
-  });
-});
-
-// PAGINATION
-function setupPagination() {
-  $("#pageSelect").empty();
-  const pages = Math.ceil(allResults.length / resultsPerPage);
-
-  for (let i = 1; i <= pages; i++) {
-    $("#pageSelect").append(`<option value="${i}">Page ${i}</option>`);
-  }
-}
-
-$("#pageSelect").change(function () {
-  displayResults($(this).val());
-});
-
-// DISPLAY RESULTS
-function displayResults(page) {
-  $("#results").empty();
-
-  const start = (page - 1) * resultsPerPage;
-  const end = start + resultsPerPage;
-
-  allResults.slice(start, end).forEach(item => {
-    const book = item.volumeInfo;
-
-    $("#results").append(`
-      <div class="book">
-        <img src="${book.imageLinks?.thumbnail || 'https://via.placeholder.com/100'}">
-        <h3 class="book-link" data-id="${item.id}">
-          ${book.title}
-        </h3>
-      </div>
-    `);
-  });
-}
-
-// CLICK BOOK → SHOW DETAILS
-$(document).on("click", ".book-link", function () {
-  const id = $(this).data("id");
-  loadBookDetails(id);
-});
-
-// LOAD DETAILS
-function loadBookDetails(id) {
-  const url = `https://www.googleapis.com/books/v1/volumes/${id}`;
-
-  $.get(url, function (data) {
-    const book = data.volumeInfo;
-    const sale = data.saleInfo;
-
-    $("#bookDetails").html(`
-      <h1>${book.title}</h1>
-      <img src="${book.imageLinks?.thumbnail || 'https://via.placeholder.com/100'}">
-      <p><strong>Authors:</strong> ${book.authors?.join(", ") || "N/A"}</p>
-      <p><strong>Publisher:</strong> ${book.publisher || "N/A"}</p>
-      <p><strong>Description:</strong> ${book.description || "N/A"}</p>
-      <p><strong>Price:</strong> ${
-        sale?.listPrice 
-        ? sale.listPrice.amount + " " + sale.listPrice.currencyCode 
-        : "N/A"
-      }</p>
-    `);
-
-    showPage("detailsPage");
-  });
-}
-
-
-const bookIDs = [
-  "edition/_/M6SwUjgBoy8C?hl=en4",
-  "_/M6SwUjgBoy8C?hl=en",
-  "9781782119210, 1782119213"
-]; 
-
-function loadBookshelf() {
-  $("#bookshelf").empty();
-
-  bookIDs.forEach(id => {
-    $.get(`https://www.googleapis.com/books/v1/volumes/${id}`, function (data) {
-      const book = data.volumeInfo;
-
-      $("#bookshelf").append(`
-        <div class="book">
-          <img src="${book.imageLinks?.thumbnail || 'https://via.placeholder.com/100'}">
-          <h3 class="book-link" data-id="${id}">
-            ${book.title}
-          </h3>
-        </div>
-      `);
+/* SEARCH BOOKS */
+$("#searchBtn").click(function(){
+    currentQuery=$("#searchBox").val();
+    if(currentQuery==="") return;
+    let url=`https://www.googleapis.com/books/v1/volumes?q=${currentQuery}&maxResults=40`;
+    $.getJSON(url,function(data){
+        allResults=data.items.slice(0,60);
+        buildPagination();
+        displayPage(1);
     });
-  });
-}
-</script>
+});
 
+/* PAGINATION */
+function buildPagination(){
+    $("#pageSelect").empty();
+    let pages=Math.ceil(allResults.length/resultsPerPage);
+    for(let i=1;i<=pages;i++){
+        $("#pageSelect").append(`<option value="${i}">${i}</option>`);
+    }
+}
+
+$("#pageSelect").change(function(){
+    displayPage($(this).val());
+});
+
+function displayPage(page){
+    $("#results").empty();
+    let start=(page-1)*resultsPerPage;
+    let end=start+resultsPerPage;
+    let books=allResults.slice(start,end);
+
+    books.forEach(book=>{
+        let info=book.volumeInfo;
+        let img=info.imageLinks?.thumbnail || "";
+        $("#results").append(`
+        <div class="bookCard">
+            <img src="${img}">
+            <h3><a href="?book=${book.id}">${info.title}</a></h3>
+        </div>`);
+    });
+}
+
+/* BOOK DETAILS */
+function loadDetails(id){
+    let url=`https://www.googleapis.com/books/v1/volumes/${id}`;
+    $.getJSON(url,function(data){
+        let b=data.volumeInfo;
+        let price=data.saleInfo?.listPrice?.amount || "N/A";
+        $("#detailsPage").html(`
+            <h1>${b.title}</h1>
+            <img src="${b.imageLinks?.thumbnail}">
+            <p><b>Authors:</b> ${b.authors}</p>
+            <p><b>Publisher:</b> ${b.publisher}</p>
+            <p><b>Price:</b> ${price}</p>
+            <p>${b.description}</p>
+        `);
+        showPage("details");
+    });
+}
+
+/* BOOKSHELF */
+const bookshelfIDs=["0yfauGsKOjAC","6gfDfhmmHxMC","M6SwUjgBoy8C","kJw4xgJSEqMC","gTycDAEACAAJ"];
+
+function loadBookshelf(){
+    $("#bookshelfResults").empty();
+    bookshelfIDs.forEach(id=>{
+        let url=`https://www.googleapis.com/books/v1/volumes/${id}`;
+        $.getJSON(url,function(data){
+            let info=data.volumeInfo;
+            let img=info.imageLinks?.thumbnail || "";
+            $("#bookshelfResults").append(`
+            <div class="bookCard">
+                <img src="${img}">
+                <h3><a href="?book=${id}">${info.title}</a></h3>
+            </div>`);
+        });
+    });
+}
+
+/* CHECK URL FOR BOOK ID */
+const params=new URLSearchParams(window.location.search);
+if(params.get("book")){
+    loadDetails(params.get("book"));
+}
+
+</script>
 </body>
 </html>
